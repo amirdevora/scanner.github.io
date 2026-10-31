@@ -87,6 +87,7 @@ textarea{width:100%;min-height:90px;background:var(--bg);border:1px solid var(--
   <div id="wgSettings" class="hide">
     <div class="wg-section-title">اطلاعات کلاینت</div>
     <div class="field"><label>Private Key کلاینت (به‌صورت محلی تولید می‌شود)</label><input id="wgPrivateKey" dir="ltr" autocomplete="off" placeholder="برای تولید خودکار خالی بگذارید"></div>
+    <div class="field" style="margin-top:9px"><label>Public Key کلاینت (برای ثبت در سرور)</label><input id="wgPublicKey" dir="ltr" autocomplete="off" placeholder="پس از تولید جفت‌کلید نمایش داده می‌شود"></div>
     <div class="wg-grid">
       <div class="field"><label>آدرس داخلی کلاینت</label><input id="wgAddress" dir="ltr" value="10.66.66.2/32"></div>
       <div class="field"><label>DNS</label><input id="wgDns" dir="ltr" value="1.1.1.1"></div>
@@ -320,10 +321,15 @@ async function wgLoadEndpoints(){
     toast("دریافت Endpointها ناموفق بود");
   }finally{btn.disabled=false;}
 }
-function wgRandomPrivateKey(){
-  const bytes=crypto.getRandomValues(new Uint8Array(32));
-  let binary="";bytes.forEach(b=>binary+=String.fromCharCode(b));
-  return btoa(binary);
+async function wgCreateKeyPair(){
+  if(!crypto||!crypto.subtle)throw new Error("مرورگر WebCrypto را پشتیبانی نمی‌کند");
+  const pair=await crypto.subtle.generateKey({name:"X25519"},true,["deriveBits"]);
+  const publicBytes=new Uint8Array(await crypto.subtle.exportKey("raw",pair.publicKey));
+  const privateDer=new Uint8Array(await crypto.subtle.exportKey("pkcs8",pair.privateKey));
+  const privateBytes=privateDer.slice(-32);
+  const b64=bytes=>{let binary="";bytes.forEach(b=>binary+=String.fromCharCode(b));return btoa(binary);};
+  if(publicBytes.length!==32||privateBytes.length!==32)throw new Error("ساختار کلید X25519 نامعتبر است");
+  return {privateKey:b64(privateBytes),publicKey:b64(publicBytes)};
 }
 function wgNum(id,label,min,max){
   const value=wg$(id).value.trim();
@@ -332,12 +338,17 @@ function wgNum(id,label,min,max){
   if(!Number.isInteger(n)||n<min||n>max)throw new Error("مقدار "+label+" معتبر نیست");
   return n;
 }
-function wgGenerateConfig(){
+async function wgGenerateConfig(){
   if(WG_SELECTED===null||!WG_ENDPOINTS[WG_SELECTED]){toast("ابتدا یک Endpoint انتخاب کن");return;}
   const item=WG_ENDPOINTS[WG_SELECTED];
   let privateKey=wg$("wgPrivateKey").value.trim();
-  if(!privateKey){privateKey=wgRandomPrivateKey();wg$("wgPrivateKey").value=privateKey;}
+  let clientPublicKey=wg$("wgPublicKey").value.trim();
+  if(!privateKey){
+    try{const pair=await wgCreateKeyPair();privateKey=pair.privateKey;clientPublicKey=pair.publicKey;wg$("wgPrivateKey").value=privateKey;wg$("wgPublicKey").value=clientPublicKey;}
+    catch(e){toast("تولید کلید ناموفق بود: "+e.message);return;}
+  }
   try{if(atob(privateKey).length!==32)throw new Error();}catch(e){toast("PrivateKey باید Base64 معتبر با ۳۲ بایت باشد");return;}
+  if(clientPublicKey){try{if(atob(clientPublicKey).length!==32)throw new Error();}catch(e){toast("PublicKey کلاینت باید Base64 معتبر با ۳۲ بایت باشد");return;}}
   const address=wg$("wgAddress").value.trim(),dns=wg$("wgDns").value.trim(),allowed=wg$("wgAllowed").value.trim();
   if(!address||!allowed){toast("Address و AllowedIPs الزامی هستند");return;}
   const jc=wgNum("wgJc","Jc",0,128),jmin=wgNum("wgJmin","Jmin",0,1279),jmax=wgNum("wgJmax","Jmax",1,1280);
@@ -355,7 +366,7 @@ function wgGenerateConfig(){
   }
   const keep=Number(wg$("wgKeepalive").value||25);
   if(!Number.isInteger(keep)||keep<0||keep>65535){toast("Keepalive معتبر نیست");return;}
-  const lines=["[Interface]","PrivateKey = "+privateKey,"Address = "+address];
+  const lines=["# ClientPublicKey = "+(clientPublicKey||"NOT PROVIDED"),"[Interface]","PrivateKey = "+privateKey,"Address = "+address];
   if(dns)lines.push("DNS = "+dns);
   lines.push("Jc = "+jc,"Jmin = "+jmin,"Jmax = "+jmax);
   if(hasShared){
@@ -371,17 +382,18 @@ function wgGenerateConfig(){
   WG_OUTPUT=lines.join("\n");wg$("wgOutput").value=WG_OUTPUT;
   toast("پیش‌نویس کانفیگ ساخته شد");
 }
-function wgDownloadConfig(){
-  if(!WG_OUTPUT){wgGenerateConfig();if(!WG_OUTPUT)return;}
+async function wgDownloadConfig(){
+  if(!WG_OUTPUT){await wgGenerateConfig();if(!WG_OUTPUT)return;}
   const blob=new Blob([WG_OUTPUT],{type:"text/plain;charset=utf-8"});
   const url=URL.createObjectURL(blob),a=document.createElement("a");
   const item=WG_ENDPOINTS[WG_SELECTED];
   a.href=url;a.download="amneziawg-"+item.host.replace(/[^a-z0-9.-]/gi,"_")+"-"+item.port+".conf";
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
+wg$("wgPrivateKey").addEventListener("input",()=>{wg$("wgPublicKey").value="";});
 wg$("wgRefresh").addEventListener("click",wgLoadEndpoints);
 wg$("wgBuildBtn").addEventListener("click",wgGenerateConfig);
-wg$("wgCopy").addEventListener("click",()=>{if(!WG_OUTPUT)wgGenerateConfig();if(WG_OUTPUT)copy(WG_OUTPUT);});
+wg$("wgCopy").addEventListener("click",async()=>{if(!WG_OUTPUT)await wgGenerateConfig();if(WG_OUTPUT)copy(WG_OUTPUT);});
 wg$("wgDownload").addEventListener("click",wgDownloadConfig);
 wgLoadEndpoints();
 $("#toOpt").onclick=()=>setStep(3);$("#backRes").onclick=()=>setStep(2);
