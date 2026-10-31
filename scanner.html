@@ -53,6 +53,20 @@ textarea{width:100%;min-height:90px;background:var(--bg);border:1px solid var(--
 .empty{text-align:center;color:var(--dim);padding:30px 10px;font-weight:600}
 .spin{width:16px;height:16px;border:2px solid rgba(4,19,13,.3);border-top-color:#04130d;border-radius:50%;animation:sp .7s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
+
+/* WireGuard endpoint builder */
+.wg-list{display:grid;gap:8px;max-height:340px;overflow:auto;margin-top:12px}
+.wg-item{display:flex;align-items:center;gap:10px;padding:11px;background:var(--card2);border:1px solid var(--border);border-radius:12px;cursor:pointer}
+.wg-item:has(input:checked){border-color:var(--teal);background:rgba(0,229,160,.07)}
+.wg-item input{accent-color:var(--teal);width:17px;height:17px;flex:none}
+.wg-meta{min-width:0;flex:1}.wg-host{direction:ltr;text-align:left;font-weight:800;overflow-wrap:anywhere}.wg-key{font:11px ui-monospace,monospace;color:var(--dim);direction:ltr;text-align:left;overflow-wrap:anywhere}
+.wg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:10px}
+.wg-grid .field input{min-width:0}
+.wg-actions{display:flex;gap:8px;margin-top:10px}.wg-actions>*{flex:1}
+.wg-warning{border:1px solid rgba(251,191,36,.35);background:rgba(251,191,36,.07);border-radius:12px;padding:11px;color:#f6d27a;font-size:11.5px;line-height:1.8;margin-top:10px}
+.wg-section-title{font-size:12px;font-weight:800;color:var(--muted);margin:14px 0 5px}
+@media(max-width:380px){.wg-grid{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -60,6 +74,52 @@ textarea{width:100%;min-height:90px;background:var(--bg);border:1px solid var(--
   <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l3 8 4-16 3 8h4"/></svg></div>
   <div><h1>اسکنر IP تمیز</h1><p>پیدا کردن بهترین IP کلودفلر · چندنخی</p></div>
 </div>
+
+<section class="card" id="wgBuilder">
+  <h3>🛡️ سازنده Endpointهای WireGuard / AmneziaWG</h3>
+  <div class="statline"><span id="wgStatus">برای دریافت فهرست آماده</span><span id="wgTotal">۰ Endpoint</span></div>
+  <div class="wg-actions">
+    <button class="btn sec sm" id="wgRefresh">↻ دریافت فهرست جدید</button>
+    <button class="btn sm" id="wgBuildBtn" disabled>ساخت کانفیگ انتخاب‌شده</button>
+  </div>
+  <div class="note">فهرست از منبع عمومی GetFreeProxy دریافت می‌شود؛ داده‌ها با هر بار بازکردن صفحه یا فشردن دکمه به‌روز دریافت می‌شوند. این بخش هیچ TLS Handshake یا تست اتصال انجام نمی‌دهد.</div>
+  <div id="wgList" class="wg-list"><div class="empty">در انتظار دریافت Endpointها…</div></div>
+  <div id="wgSettings" class="hide">
+    <div class="wg-section-title">اطلاعات کلاینت</div>
+    <div class="field"><label>Private Key کلاینت (به‌صورت محلی تولید می‌شود)</label><input id="wgPrivateKey" dir="ltr" autocomplete="off" placeholder="برای تولید خودکار خالی بگذارید"></div>
+    <div class="wg-grid">
+      <div class="field"><label>آدرس داخلی کلاینت</label><input id="wgAddress" dir="ltr" value="10.66.66.2/32"></div>
+      <div class="field"><label>DNS</label><input id="wgDns" dir="ltr" value="1.1.1.1"></div>
+      <div class="field"><label>Allowed IPs</label><input id="wgAllowed" dir="ltr" value="0.0.0.0/0, ::/0"></div>
+      <div class="field"><label>Persistent Keepalive</label><input id="wgKeepalive" dir="ltr" type="number" min="0" max="65535" value="25"></div>
+    </div>
+    <div class="wg-section-title">پارامترهای کلاینت AmneziaWG</div>
+    <div class="wg-grid">
+      <div class="field"><label>Jc</label><input id="wgJc" dir="ltr" type="number" min="0" max="128" value="4"></div>
+      <div class="field"><label>Jmin</label><input id="wgJmin" dir="ltr" type="number" min="0" max="1279" value="40"></div>
+      <div class="field"><label>Jmax</label><input id="wgJmax" dir="ltr" type="number" min="1" max="1280" value="70"></div>
+    </div>
+    <details style="margin-top:12px">
+      <summary class="muted" style="cursor:pointer;font-weight:700">پارامترهای وابسته به سرور (اختیاری)</summary>
+      <p class="note">S1، S2 و H1 تا H4 باید در صورت استفاده با مقادیر سمت سرور یکسان باشند. فهرست عمومی این اطلاعات را منتشر نمی‌کند؛ حدس‌زدن آن‌ها اتصال را تضمین نمی‌کند.</p>
+      <div class="wg-grid">
+        <div class="field"><label>S1</label><input id="wgS1" dir="ltr" type="number" min="0" max="1132" placeholder="خالی = نامشخص"></div>
+        <div class="field"><label>S2</label><input id="wgS2" dir="ltr" type="number" min="0" max="1188" placeholder="خالی = نامشخص"></div>
+        <div class="field"><label>H1</label><input id="wgH1" dir="ltr" type="number" min="5" max="2147483647" placeholder="خالی = نامشخص"></div>
+        <div class="field"><label>H2</label><input id="wgH2" dir="ltr" type="number" min="5" max="2147483647" placeholder="خالی = نامشخص"></div>
+        <div class="field"><label>H3</label><input id="wgH3" dir="ltr" type="number" min="5" max="2147483647" placeholder="خالی = نامشخص"></div>
+        <div class="field"><label>H4</label><input id="wgH4" dir="ltr" type="number" min="5" max="2147483647" placeholder="خالی = نامشخص"></div>
+      </div>
+    </details>
+    <div class="wg-warning">محدودیت فنی: منبع عمومی فقط PublicKey سرور و Endpoint را می‌دهد. PrivateKey و آدرس داخلی این فرم برای پیش‌نویس ساخته می‌شوند و باید در سمت سرور به‌عنوان Peer ثبت شوند. مقادیر AWG سمت سرور نیز از این فهرست قابل استخراج نیستند. بنابراین فایل ساخته می‌شود، اما اتصال آن تضمین‌شده نیست.</div>
+    <div class="wg-actions">
+      <button class="btn sec sm" id="wgCopy">کپی کانفیگ</button>
+      <button class="btn sm" id="wgDownload">دانلود فایل .conf</button>
+    </div>
+    <div style="margin-top:12px"><label class="muted" style="font-size:12px;font-weight:700">پیش‌نمایش کانفیگ</label><textarea id="wgOutput" readonly style="min-height:245px"></textarea></div>
+  </div>
+</section>
+
 <div class="steps"><div class="s on" id="st1"></div><div class="s" id="st2"></div><div class="s" id="st3"></div></div>
 
 <section id="step1">
@@ -203,7 +263,129 @@ function build(){const lines=$("#cfgIn").value.split("\n").map(s=>s.trim()).filt
   if(!OC.length){toast("کانفیگ معتبر نبود");return;}$("#outCard").style.display="block";$("#cfgOut").value=OP.join("\n");toast(fa(OC.length)+" کانفیگ ساخته شد");}
 function copy(t){if(navigator.clipboard)navigator.clipboard.writeText(t).catch(()=>{});else{const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove();}}
 
-$("#scanBtn").onclick=startScan;$("#rescan").onclick=()=>setStep(1);$("#toOpt").onclick=()=>setStep(3);$("#backRes").onclick=()=>setStep(2);
+$("#scanBtn").onclick=startScan;$("#rescan").onclick=()=>
+/* Public WireGuard endpoint list + AmneziaWG draft generator.
+   No network probing or handshake is performed by this module. */
+const WG_SOURCE_URL="https://raw.githubusercontent.com/wiki/gfpcom/free-proxy-list/lists/wireguard.txt";
+let WG_ENDPOINTS=[],WG_SELECTED=null,WG_OUTPUT="";
+const wg$=id=>document.getElementById(id);
+function wgEscape(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function wgParseLine(line){
+  const m=line.trim().match(/^wireguard:\/\/([^@\s]+)@(\[[0-9a-fA-F:]+\]|[a-zA-Z0-9.-]+):(\d+)(?:\?(.*))?$/i);
+  if(!m)return null;
+  const key=m[1],host=m[2],port=Number(m[3]);
+  if(!Number.isInteger(port)||port<1||port>65535)return null;
+  try{const raw=atob(key.replace(/-/g,"+").replace(/_/g,"/"));if(raw.length!==32)return null;}catch(e){return null;}
+  const params=new URLSearchParams(m[4]||"");
+  return {key,host,port,endpoint:host+":"+port,allowed:params.get("allowed_ips")||"0.0.0.0/0, ::/0"};
+}
+function wgRenderList(){
+  const list=wg$("wgList");list.innerHTML="";
+  if(!WG_ENDPOINTS.length){list.innerHTML='<div class="empty">Endpointی دریافت نشد.</div>';return;}
+  WG_ENDPOINTS.forEach((item,index)=>{
+    const label=document.createElement("label");label.className="wg-item";
+    const radio=document.createElement("input");radio.type="radio";radio.name="wgEndpoint";radio.value=String(index);
+    radio.checked=WG_SELECTED===index;
+    const meta=document.createElement("span");meta.className="wg-meta";
+    const host=document.createElement("div");host.className="wg-host";host.textContent=item.endpoint;
+    const key=document.createElement("div");key.className="wg-key";key.textContent="Server PublicKey: "+item.key.slice(0,13)+"…"+item.key.slice(-7);
+    meta.append(host,key);label.append(radio,meta);
+    radio.addEventListener("change",()=>{
+      WG_SELECTED=index;wg$("wgBuildBtn").disabled=false;wg$("wgSettings").classList.remove("hide");
+      const allowed=item.allowed||"0.0.0.0/0, ::/0";wg$("wgAllowed").value=allowed;
+      wg$("wgOutput").value="";WG_OUTPUT="";
+    });
+    list.append(label);
+  });
+  if(WG_SELECTED!==null&&WG_ENDPOINTS[WG_SELECTED]){wg$("wgBuildBtn").disabled=false;wg$("wgSettings").classList.remove("hide");}
+}
+async function wgLoadEndpoints(){
+  const status=wg$("wgStatus"),btn=wg$("wgRefresh");
+  btn.disabled=true;status.textContent="در حال دریافت فهرست تازه…";
+  try{
+    const response=await fetch(WG_SOURCE_URL,{cache:"no-store",headers:{"Accept":"text/plain"}});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    const text=await response.text();
+    const map=new Map();
+    text.split(/\r?\n/).forEach(line=>{const item=wgParseLine(line);if(item)map.set(item.key+"@"+item.endpoint,item);});
+    WG_ENDPOINTS=[...map.values()];WG_SELECTED=null;
+    wg$("wgBuildBtn").disabled=true;wg$("wgSettings").classList.add("hide");
+    wg$("wgTotal").textContent=fa(WG_ENDPOINTS.length)+" Endpoint";
+    status.textContent="دریافت انجام شد · "+new Date().toLocaleString("fa-IR");
+    wgRenderList();
+    if(!WG_ENDPOINTS.length)throw new Error("No valid endpoint records");
+  }catch(error){
+    status.textContent="دریافت خودکار ناموفق بود؛ اتصال منبع یا CORS را بررسی کنید.";
+    wg$("wgList").innerHTML='<div class="empty">فهرست دریافت نشد. لینک منبع را می‌توانید مستقیم باز کنید: <a href="'+WG_SOURCE_URL+'" target="_blank" rel="noopener">wireguard.txt</a></div>';
+    toast("دریافت Endpointها ناموفق بود");
+  }finally{btn.disabled=false;}
+}
+function wgRandomPrivateKey(){
+  const bytes=crypto.getRandomValues(new Uint8Array(32));
+  let binary="";bytes.forEach(b=>binary+=String.fromCharCode(b));
+  return btoa(binary);
+}
+function wgNum(id,label,min,max){
+  const value=wg$(id).value.trim();
+  if(value==="")return null;
+  const n=Number(value);
+  if(!Number.isInteger(n)||n<min||n>max)throw new Error("مقدار "+label+" معتبر نیست");
+  return n;
+}
+function wgGenerateConfig(){
+  if(WG_SELECTED===null||!WG_ENDPOINTS[WG_SELECTED]){toast("ابتدا یک Endpoint انتخاب کن");return;}
+  const item=WG_ENDPOINTS[WG_SELECTED];
+  let privateKey=wg$("wgPrivateKey").value.trim();
+  if(!privateKey){privateKey=wgRandomPrivateKey();wg$("wgPrivateKey").value=privateKey;}
+  try{if(atob(privateKey).length!==32)throw new Error();}catch(e){toast("PrivateKey باید Base64 معتبر با ۳۲ بایت باشد");return;}
+  const address=wg$("wgAddress").value.trim(),dns=wg$("wgDns").value.trim(),allowed=wg$("wgAllowed").value.trim();
+  if(!address||!allowed){toast("Address و AllowedIPs الزامی هستند");return;}
+  const jc=wgNum("wgJc","Jc",0,128),jmin=wgNum("wgJmin","Jmin",0,1279),jmax=wgNum("wgJmax","Jmax",1,1280);
+  if(jc===null||jmin===null||jmax===null||jmin>=jmax){toast("مقادیر Jc/Jmin/Jmax را بررسی کن");return;}
+  const sharedIds=["wgS1","wgS2","wgH1","wgH2","wgH3","wgH4"];
+  const sharedLabels=["S1","S2","H1","H2","H3","H4"];
+  const sharedRanges=[[0,1132],[0,1188],[5,2147483647],[5,2147483647],[5,2147483647],[5,2147483647]];
+  let shared=[];
+  try{shared=sharedIds.map((id,i)=>wgNum(id,sharedLabels[i],...sharedRanges[i]));}catch(e){toast(e.message);return;}
+  const hasShared=shared.some(v=>v!==null);
+  if(hasShared&&shared.some(v=>v===null)){toast("برای پارامترهای سمت سرور، S1، S2 و H1 تا H4 را کامل وارد کن یا همه را خالی بگذار");return;}
+  if(hasShared){
+    if(shared[2]===shared[3]||shared[2]===shared[4]||shared[2]===shared[5]||shared[3]===shared[4]||shared[3]===shared[5]||shared[4]===shared[5]){toast("مقادیر H1 تا H4 باید یکتا باشند");return;}
+    if(shared[0]+56===shared[1]){toast("S1 + 56 نباید با S2 برابر باشد");return;}
+  }
+  const keep=Number(wg$("wgKeepalive").value||25);
+  if(!Number.isInteger(keep)||keep<0||keep>65535){toast("Keepalive معتبر نیست");return;}
+  const lines=["[Interface]","PrivateKey = "+privateKey,"Address = "+address];
+  if(dns)lines.push("DNS = "+dns);
+  lines.push("Jc = "+jc,"Jmin = "+jmin,"Jmax = "+jmax);
+  if(hasShared){
+    ["S1","S2","H1","H2","H3","H4"].forEach((name,i)=>lines.push(name+" = "+shared[i]));
+  }else{
+    lines.push("# S1/S2/H1-H4 are not supplied by the public endpoint feed.");
+    lines.push("# Add the exact server-side AWG values here when available.");
+  }
+  lines.push("","[Peer]","PublicKey = "+item.key,"AllowedIPs = "+allowed,"Endpoint = "+item.endpoint);
+  if(keep>0)lines.push("PersistentKeepalive = "+keep);
+  lines.push("","# DRAFT ONLY: the server must authorize this client PublicKey and Address.");
+  lines.push("# Public endpoint feeds do not provide client credentials or server AWG parameters.");
+  WG_OUTPUT=lines.join("\n");wg$("wgOutput").value=WG_OUTPUT;
+  toast("پیش‌نویس کانفیگ ساخته شد");
+}
+function wgDownloadConfig(){
+  if(!WG_OUTPUT){wgGenerateConfig();if(!WG_OUTPUT)return;}
+  const blob=new Blob([WG_OUTPUT],{type:"text/plain;charset=utf-8"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");
+  const item=WG_ENDPOINTS[WG_SELECTED];
+  a.href=url;a.download="amneziawg-"+item.host.replace(/[^a-z0-9.-]/gi,"_")+"-"+item.port+".conf";
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+wg$("wgRefresh").addEventListener("click",wgLoadEndpoints);
+wg$("wgBuildBtn").addEventListener("click",wgGenerateConfig);
+wg$("wgCopy").addEventListener("click",()=>{if(!WG_OUTPUT)wgGenerateConfig();if(WG_OUTPUT)copy(WG_OUTPUT);});
+wg$("wgDownload").addEventListener("click",wgDownloadConfig);
+wgLoadEndpoints();
+
+setStep(1);$("#toOpt").onclick=()=>setStep(3);$("#backRes").onclick=()=>setStep(2);
 $("#useBest").onclick=()=>{if(FOUND[0])toast("بهترین IP: "+FOUND[0].ip);};$("#buildBtn").onclick=build;
 $("#copyClean").onclick=()=>{copy(OC.join("\n"));toast("کپی شد (بدون پینگ)");};$("#copyPing").onclick=()=>{copy(OP.join("\n"));toast("کپی شد (با پینگ)");};
 if(tg){try{tg.BackButton.onClick(()=>{const cur=$("#step3").classList.contains("hide")?($("#step2").classList.contains("hide")?1:2):3;setStep(Math.max(1,cur-1));});}catch(e){}}
