@@ -263,7 +263,7 @@ function build(){const lines=$("#cfgIn").value.split("\n").map(s=>s.trim()).filt
   if(!OC.length){toast("کانفیگ معتبر نبود");return;}$("#outCard").style.display="block";$("#cfgOut").value=OP.join("\n");toast(fa(OC.length)+" کانفیگ ساخته شد");}
 function copy(t){if(navigator.clipboard)navigator.clipboard.writeText(t).catch(()=>{});else{const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove();}}
 
-$("#scanBtn").onclick=startScan;$("#rescan").onclick=()=>
+$("#scanBtn").onclick=startScan;$("#rescan").onclick=()=>setStep(1);
 /* Public WireGuard endpoint list + AmneziaWG draft generator.
    No network probing or handshake is performed by this module. */
 const WG_SOURCE_URL="https://raw.githubusercontent.com/wiki/gfpcom/free-proxy-list/lists/wireguard.txt";
@@ -384,8 +384,7 @@ wg$("wgBuildBtn").addEventListener("click",wgGenerateConfig);
 wg$("wgCopy").addEventListener("click",()=>{if(!WG_OUTPUT)wgGenerateConfig();if(WG_OUTPUT)copy(WG_OUTPUT);});
 wg$("wgDownload").addEventListener("click",wgDownloadConfig);
 wgLoadEndpoints();
-
-setStep(1);$("#toOpt").onclick=()=>setStep(3);$("#backRes").onclick=()=>setStep(2);
+$("#toOpt").onclick=()=>setStep(3);$("#backRes").onclick=()=>setStep(2);
 $("#useBest").onclick=()=>{if(FOUND[0])toast("بهترین IP: "+FOUND[0].ip);};$("#buildBtn").onclick=build;
 $("#copyClean").onclick=()=>{copy(OC.join("\n"));toast("کپی شد (بدون پینگ)");};$("#copyPing").onclick=()=>{copy(OP.join("\n"));toast("کپی شد (با پینگ)");};
 if(tg){try{tg.BackButton.onClick(()=>{const cur=$("#step3").classList.contains("hide")?($("#step2").classList.contains("hide")?1:2):3;setStep(Math.max(1,cur-1));});}catch(e){}}
