@@ -5,6 +5,8 @@ on:
     paths:
       - "agent-installer/**"
       - "personal-agent/**"
+      - "admin/**"
+      - "app/**"
       - ".github/workflows/agent-studio-pages.yml"
   workflow_dispatch:
 permissions:
